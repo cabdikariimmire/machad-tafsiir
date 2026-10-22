@@ -8,15 +8,19 @@ import {
 } from 'lucide-react';
 
 export default function AttendancePage() {
-  const { user, isSuperAdmin, hasInstituteAccess, hasQuranAccess } = useAuth();
+  const { user, isSuperAdmin, isTeacher, hasInstituteAccess, hasQuranAccess } = useAuth();
   
   // Selection states
-  const defaultDivision = hasInstituteAccess ? 'institute' : (hasQuranAccess ? 'quran' : 'institute');
+  const defaultDivision = isTeacher && user?.division_scope === 'quran'
+    ? 'quran'
+    : (hasInstituteAccess ? 'institute' : (hasQuranAccess ? 'quran' : 'institute'));
   const [division, setDivision] = useState(defaultDivision);
   const [classes, setClasses] = useState([]);
   const [groups, setGroups] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [teacherAssignments, setTeacherAssignments] = useState([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
   
   // Date state: Defaults to today (allows every single day of the week: Mon - Sun)
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -56,16 +60,28 @@ export default function AttendancePage() {
   async function loadDropdowns() {
     try {
       if (division === 'institute') {
-        const res = await api.getClasses();
-        if (res.success && res.data.length > 0) {
-          setClasses(res.data);
+        const [res, assignmentRes] = await Promise.all([
+          api.getClasses(),
+          isTeacher ? api.getInstituteTeacherAssignments() : Promise.resolve({ success: true, data: [] })
+        ]);
+        const assignments = assignmentRes.success ? (assignmentRes.data || []) : [];
+        setTeacherAssignments(assignments);
+        const classList = isTeacher
+          ? (res.data || []).filter(c => assignments.some(a => String(a.class_id) === String(c.id)))
+          : (res.data || []);
+        if (res.success && classList.length > 0) {
+          setClasses(classList);
           setSelectedClassId(prev => {
-            const exists = res.data.some(c => String(c.id) === String(prev));
-            return exists ? prev : String(res.data[0].id);
+            const exists = classList.some(c => String(c.id) === String(prev));
+            const nextClassId = exists ? prev : String(classList[0].id);
+            const subjects = assignments.filter(a => String(a.class_id) === String(nextClassId));
+            setSelectedSubjectId(String(subjects[0]?.subject_id || ''));
+            return nextClassId;
           });
         } else {
           setClasses([]);
           setSelectedClassId('');
+          setSelectedSubjectId('');
         }
       } else {
         const res = await api.getQuranGroups();
@@ -90,7 +106,7 @@ export default function AttendancePage() {
     if ((division === 'institute' && selectedClassId) || (division === 'quran' && selectedGroupId)) {
       fetchSheet();
     }
-  }, [division, selectedClassId, selectedGroupId, selectedDate]);
+  }, [division, selectedClassId, selectedGroupId, selectedSubjectId, selectedDate]);
 
   async function fetchSheet() {
     setError('');
@@ -105,6 +121,7 @@ export default function AttendancePage() {
 
       if (division === 'institute') {
         params.append('class_id', selectedClassId);
+        if (isTeacher) params.append('subject_id', selectedSubjectId);
       } else {
         params.append('group_id', selectedGroupId);
       }
@@ -217,6 +234,7 @@ export default function AttendancePage() {
 
       if (division === 'institute') {
         payload.class_id = parseInt(selectedClassId, 10);
+        if (isTeacher) payload.subject_id = parseInt(selectedSubjectId, 10);
       } else {
         payload.group_id = parseInt(selectedGroupId, 10);
       }
@@ -443,6 +461,10 @@ export default function AttendancePage() {
                     const newClassId = e.target.value;
                     checkUnsavedBeforeAction(() => {
                       setSelectedClassId(newClassId);
+                      if (isTeacher) {
+                        const nextAssignment = teacherAssignments.find(a => String(a.class_id) === String(newClassId));
+                        setSelectedSubjectId(String(nextAssignment?.subject_id || ''));
+                      }
                     });
                   }}
                 >
@@ -481,6 +503,19 @@ export default function AttendancePage() {
                       </option>
                     ))
                   )}
+                </select>
+              </div>
+            )}
+
+            {division === 'institute' && isTeacher && (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontWeight: 700, color: '#0f172a' }}>Maaddada laguu xilsaaray *</label>
+                <select className="form-select" value={selectedSubjectId} onChange={e => {
+                  checkUnsavedBeforeAction(() => setSelectedSubjectId(e.target.value));
+                }}>
+                  {teacherAssignments.filter(a => String(a.class_id) === String(selectedClassId)).map(a => (
+                    <option key={a.subject_id} value={a.subject_id}>{a.subject_name}</option>
+                  ))}
                 </select>
               </div>
             )}

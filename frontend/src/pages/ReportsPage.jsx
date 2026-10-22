@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import ReceiptModal from '../components/ReceiptModal';
 import CenteredArabicExamReceipt from '../components/exams/CenteredArabicExamReceipt';
+import StudentDetailsModal from '../components/StudentDetailsModal';
 import { 
   FileText, Download, Printer, Search, Calendar, Filter,
   DollarSign, AlertTriangle, CalendarCheck, Award, Users, BookMarked, ArrowRight,
@@ -57,6 +58,7 @@ export default function ReportsPage() {
   // Historical Exam Drilldown State
   const [selectedStudentDetail, setSelectedStudentDetail] = useState(null);
   const [studentDetailLoading, setStudentDetailLoading] = useState(false);
+  const [selectedRosterStudentId, setSelectedRosterStudentId] = useState(null);
 
   // Load auxiliary classes/groups/exams
   useEffect(() => {
@@ -1122,13 +1124,14 @@ export default function ReportsPage() {
                   <th>Fasalka (Machadka)</th>
                   <th>Halaqada (Quraanka)</th>
                   <th>Waalidka / Xiriirka</th>
+                  <th style={{ textAlign: 'right' }}>Faahfaahin</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '36px' }}>Soo dejinayaa liiska ardayda...</td></tr>
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '36px' }}>Soo dejinayaa liiska ardayda...</td></tr>
                 ) : records.length === 0 ? (
-                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>Wax arday ah lagama helin shuruudahan.</td></tr>
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>Wax arday ah lagama helin shuruudahan.</td></tr>
                 ) : (
                   records.map(r => (
                     <tr key={r.id}>
@@ -1144,6 +1147,11 @@ export default function ReportsPage() {
                       <td>{r.group_name ? <span className="badge badge-warning">{r.group_name}</span> : '-'}</td>
                       <td style={{ fontSize: '0.82rem', color: '#475569' }}>
                         {r.emergency_contact_name} {r.emergency_contact_phone ? `(${r.emergency_contact_phone})` : ''}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelectedRosterStudentId(r.id)}>
+                          <User size={13} /> Arag dhammaan xogta
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -1268,6 +1276,13 @@ export default function ReportsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {selectedRosterStudentId && (
+        <StudentDetailsModal
+          studentId={selectedRosterStudentId}
+          onClose={() => setSelectedRosterStudentId(null)}
+        />
       )}
 
       {selectedReceipt && (

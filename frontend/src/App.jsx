@@ -14,6 +14,7 @@ import ReportsPage from './pages/ReportsPage';
 import UsersPage from './pages/UsersPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import TeachersPage from './pages/TeachersPage';
+import InstituteTeachersPage from './pages/InstituteTeachersPage';
 import QuranExamsPage from './pages/QuranExamsPage';
 
 function MainApp() {
@@ -60,6 +61,8 @@ function MainApp() {
         return <QuranPage />;
       case 'teachers':
         return <TeachersPage />;
+      case 'institute_teachers':
+        return <InstituteTeachersPage />;
       case 'attendance':
       case 'attendance_reports':
         return <AttendancePage />;
